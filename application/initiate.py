@@ -4,11 +4,11 @@ from .models import EnvironmentTypes, LocationItems, TenantItems, ZoneItems
 def EnvironmentTypesTableInitiate():
     # Define the list of environment types
     environment_types = [
-        "production",
-        "nonproduction",
-        "test",
-        "development",
-        "sandbox"
+        "PRD",
+        "NPRD",
+        "TEST",
+        "DEV",
+        "SBOX"
     ]    
     
     # Iterate over the list of types
@@ -75,10 +75,12 @@ def TenantItemsTableInitiate():
 def ZoneItemsTableInitiate():
     # Define the list of items
     zone_items = [
-        "FRONTEND",
-        "MIDTIER",
-        "BACKEND",
+        "FE",
+        "MID",
+        "BE",
         "BUR",
+        "MGMT",
+        "INFRA",
         "MISC"
     ]    
     

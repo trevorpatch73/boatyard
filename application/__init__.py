@@ -30,7 +30,7 @@ def create_app():
     app.config['SQLALCHEMY_ECHO'] = True
     db.init_app(app)
     
-    #migrate = Migrate(app, db)
+    migrate = Migrate(app, db)
 
     from .views import views
     from .auth import auth

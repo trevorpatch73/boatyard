@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}IPAM{% endblock %}
+{% block content %}
+<div class="container">
+    <h2>IPAM CIDR</h2>
+    <form action="" method="POST">
+        <input type="hidden" name="ipam_cidrs_form" value="true"> <!-- Hidden input field for form identifier -->
+        <div class="form-group">
+            <label for="network_prefix">Network Prefix:</label>
+            <input type="text" name="network_prefix" class="form-control" required>
+        </div>
+        <div class="form-group">
+            <label for="network_cidr">Network CIDR:</label>
+            <input type="text" name="network_cidr" class="form-control" required>
+        </div>
+        <div class="form-group">
+            <label for="location">Location:</label>
+            <select name="location" class="form-control">
+                {% for location in locations %}
+                <option value="{{ location.id }}">{{ location.items }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="tenant">Tenant:</label>
+            <select name="tenant" class="form-control">
+                {% for tenant in tenants %}
+                <option value="{{ tenant.id }}">{{ tenant.tenant_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="zone">Zone:</label>
+            <select name="zone" class="form-control">
+                {% for zone in zones %}
+                <option value="{{ zone.id }}">{{ zone.zone_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="environment">Environment:</label>
+            <select name="environment" class="form-control">
+                {% for environment in environments %}
+                <option value="{{ environment.id }}">{{ environment.types }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="application">Application (Optional):</label>
+            <input type="text" name="application" class="form-control">
+        </div>
+        <button type="submit" class="btn btn-primary">Add CIDR</button>
+    </form>
+
+    <!-- Table to display IPAM CIDR records -->
+    <h3>IPAM CIDR Records</h3>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Network Prefix</th>
+                <th>Network CIDR</th>
+                <th>Location</th>
+                <th>Tenant</th>
+                <th>Zone</th>
+                <th>Environment</th>
+                <th>Application</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cidr in ipam_cidrs %}
+            <tr>
+                <td>{{ cidr.network_prefix }}</td>
+                <td hx-get="{{ url_for('views.edit_network_cidr', id=cidr.id) }}" hx-trigger="click">
+                    {{ cidr.network_cidr }}
+                </td>
+                <td>{{ cidr.location.items }}</td>
+                <td>{{ cidr.tenant.tenant_name }}</td>
+                <td>{{ cidr.zone.zone_name }}</td>
+                <td>{{ cidr.environment.types }}</td>
+                <td>{{ cidr.application }}</td>
+                <td>
+                    <!-- Open button form -->
+                    <form action="{{ url_for('views.open_cidr', id=cidr.id) }}" method="post">
+                        <button type="submit" class="btn btn-Primary">Open</button>
+                    </form>                    
+                    <!-- Delete button form -->
+                    <form action="{{ url_for('views.delete_cidr', id=cidr.id) }}" method="post">
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="7">No records found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>    
+</div>
+{% endblock %}

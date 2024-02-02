@@ -3,10 +3,11 @@ from flask_login import login_required, current_user
 from werkzeug.security import generate_password_hash
 from werkzeug.exceptions import NotFound
 from sqlalchemy import func
+from ipaddress import ip_network
 from . import db
 import json
 
-from .models import InfrastructureCiscoAci, CiscoACISwitch, CiscoACISwitchVpcPairs, EnvironmentTypes, LocationItems, TenantItems, ZoneItems
+from .models import InfrastructureCiscoAci, CiscoACISwitch, CiscoACISwitchVpcPairs, EnvironmentTypes, LocationItems, TenantItems, ZoneItems, IPAM_CIDRS
 from .functions import handle_terraform_files, handle_aci_fabric_node_member_data, handle_aci_vpc_explict_protection_group_data
 
 views = Blueprint('views', __name__)
@@ -17,9 +18,9 @@ views = Blueprint('views', __name__)
 def home():
     return render_template("home.html", user=current_user)
     
-@views.route('/manage-tenants', methods=['GET', 'POST'])
+@views.route('/manage-portal', methods=['GET', 'POST'])
 @login_required
-def manage_tenants():
+def manage_portal():
     if request.method == 'POST' and 'manage_tenants_form' in request.form:
         tenant_name = request.form.get('tenant_name')
         
@@ -31,7 +32,7 @@ def manage_tenants():
             db.session.add(new_tenant)
             db.session.commit()
             flash('Tenant added successfully!', category='success')
-            return redirect(url_for('views.manage_tenants'))  # Redirect to clear the form/post request
+            return redirect(url_for('views.manage_portal'))  # Redirect to clear the form/post request
     
     tenants = TenantItems.query.all()
     
@@ -46,27 +47,27 @@ def manage_tenants():
             db.session.add(new_zone)
             db.session.commit()
             flash('zone added successfully!', category='success')
-            return redirect(url_for('views.manage_zones'))
+            return redirect(url_for('views.manage_portal'))
     
     zones = ZoneItems.query.all()
     
     if request.method == 'POST' and 'manage_envs_form' in request.form:
         env_name = request.form.get('env_name')
         
-        existing_env = EnvironmentTypes.query.filter_by(env_name=env_name).first()
+        existing_env = EnvironmentTypes.query.filter_by(types=env_name).first()
         if existing_env is not None:
             flash('env already exists.', category='error')
         else:
-            new_env = EnvironmentTypes(env_name=env_name)
+            new_env = EnvironmentTypes(types=env_name)
             db.session.add(new_env)
             db.session.commit()
             flash('env added successfully!', category='success')
-            return redirect(url_for('views.manage_envs'))
+            return redirect(url_for('views.manage_portal'))
     
     envs = EnvironmentTypes.query.all() 
     
     
-    return render_template("manage_tenants.html", user=current_user, tenants=tenants, zones=zones, envs=envs)   
+    return render_template("manage_portal.html", user=current_user, tenants=tenants, zones=zones, envs=envs)   
     
 @views.route('/delete-tenant/<int:id>', methods=['POST'])
 @login_required
@@ -79,7 +80,7 @@ def delete_tenant(id):
     db.session.commit()
 
     flash('Infrastructure entry deleted successfully!', category='success')
-    return redirect(url_for('views.manane_portal')) 
+    return redirect(url_for('views.manage_portal')) 
     
 @views.route('/delete-zone/<int:id>', methods=['POST'])
 @login_required
@@ -92,7 +93,7 @@ def delete_zone(id):
     db.session.commit()
 
     flash('Infrastructure entry deleted successfully!', category='success')
-    return redirect(url_for('views.manane_portal')) 
+    return redirect(url_for('views.manage_portal')) 
     
 @views.route('/delete-env/<int:id>', methods=['POST'])
 @login_required
@@ -105,7 +106,7 @@ def delete_env(id):
     db.session.commit()
 
     flash('Infrastructure entry deleted successfully!', category='success')
-    return redirect(url_for('views.manane_portal'))        
+    return redirect(url_for('views.manage_portal'))        
 
 @views.route('/infrastructure', methods=['GET', 'POST'])
 @login_required
@@ -456,4 +457,61 @@ def edit_node_name(id):
 @views.route('/infrastructure/ipam', methods=['GET', 'POST'])
 @login_required
 def infrastructure_ipam():
-    return render_template("infrastructure_ipam.html", user=current_user)    
+    if request.method == 'POST' and 'ipam_cidrs_form' in request.form:
+        network_prefix = request.form.get('network_prefix')
+        network_cidr = request.form.get('network_cidr')
+        full_network = f"{network_prefix}/{network_cidr}"
+        location_id = request.form.get('location')
+        tenant_id = request.form.get('tenant')
+        zone_id = request.form.get('zone')
+        environment_id = request.form.get('environment')
+        application = request.form.get('application')  # Optional
+
+        # Convert input to ip_network for comparison
+        try:
+            new_network = ip_network(full_network)
+        except ValueError:
+            flash('Invalid network prefix/CIDR.', 'error')
+            return redirect(url_for('views.infrastructure_ipam'))
+
+        # Check for duplicate or overlapping networks
+        existing_cidrs = IPAM_CIDRS.query.all()
+        for cidr in existing_cidrs:
+            existing_network = ip_network(f"{cidr.network_prefix}/{cidr.network_cidr}")
+            if new_network == existing_network:
+                flash('This network CIDR already exists.', 'error')
+                return redirect(url_for('views.infrastructure_ipam'))
+            if new_network.overlaps(existing_network):
+                flash('This network CIDR overlaps with an existing network.', 'error')
+                return redirect(url_for('views.infrastructure_ipam'))
+
+        # Proceed with adding the new IPAM CIDR
+        new_ipam_cidr = IPAM_CIDRS(network_prefix=network_prefix,
+                                   network_cidr=int(network_cidr),
+                                   location_id=location_id,
+                                   tenant_id=tenant_id,
+                                   zone_id=zone_id,
+                                   environment_id=environment_id,
+                                   application=application)
+        db.session.add(new_ipam_cidr)
+        db.session.commit()
+        flash('IPAM CIDR added successfully!', 'success')
+        return redirect(url_for('views.infrastructure_ipam'))
+
+    locations = LocationItems.query.all()
+    tenants = TenantItems.query.all()
+    zones = ZoneItems.query.all()
+    environments = EnvironmentTypes.query.all()
+    
+    ipam_cidrs = IPAM_CIDRS.query.all()
+    
+    return render_template('infrastructure_ipam.html', ipam_cidrs=ipam_cidrs, locations=locations, tenants=tenants, zones=zones, environments=environments)
+
+@views.route('/delete-cidr/<int:id>', methods=['POST'])
+@login_required
+def delete_cidr(id):
+    cidr_to_delete = IPAM_CIDRS.query.get_or_404(id)
+    db.session.delete(cidr_to_delete)
+    db.session.commit()
+    flash('CIDR deleted successfully!', category='success')
+    return redirect(url_for('views.infrastructure_ipam'))

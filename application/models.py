@@ -60,29 +60,45 @@ class EnvironmentTypes(db.Model):
     id              = db.Column(db.Integer, primary_key=True, autoincrement=True)
     types           = db.Column(db.String(150), unique=True)
     
+    #Relationships
+    ipam_cidrs      = db.relationship('IPAM_CIDRS', back_populates='environment')
+    
 class LocationItems(db.Model):
     __tablename__   = 'location_items'
     id              = db.Column(db.Integer, primary_key=True, autoincrement=True)
     items           = db.Column(db.String(150), unique=True)
+    
+    #Relationships
+    ipam_cidrs      = db.relationship('IPAM_CIDRS', back_populates='location')
     
 class TenantItems(db.Model):
     __tablename__   = 'tenant_items'
     id              = db.Column(db.Integer, primary_key=True, autoincrement=True)
     tenant_name     = db.Column(db.String(150), unique=True)
     
+    #Relationships
+    ipam_cidrs      = db.relationship('IPAM_CIDRS', back_populates='tenant')
+    
 class ZoneItems(db.Model):
     __tablename__   = 'zone_items'
     id              = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    zone_name       = db.Column(db.String(150), unique=True)       
+    zone_name       = db.Column(db.String(150), unique=True)
     
-'''    
+    #Relationships
+    ipam_cidrs      = db.relationship('IPAM_CIDRS', back_populates='zone')
+    
 class IPAM_CIDRS(db.Model):
     id              = db.Column(db.Integer, primary_key=True)
-    network_prefix  = db.Column(db.String(150))
-    network_cidr    = db.Column(db.Integer)
-    location        = db.Column(db.String(150))
-    tenant          = db.Column(db.String(150))
-    zone            = db.Column(db.String(150))
-    environment     = db.Column(db.String(150))
+    network_prefix  = db.Column(db.String(150), nullable=False)
+    network_cidr    = db.Column(db.Integer, nullable=False)
+    location_id     = db.Column(db.String(150), db.ForeignKey('location_items.id'), nullable=False)
+    tenant_id       = db.Column(db.String(150), db.ForeignKey('tenant_items.id'), nullable=False)
+    zone_id         = db.Column(db.String(150), db.ForeignKey('zone_items.id'), nullable=False)
+    environment_id  = db.Column(db.String(150), db.ForeignKey('environment_types.id'), nullable=False)
     application     = db.Column(db.String(150))
-'''
+
+    # Relationships
+    location        = db.relationship('LocationItems', back_populates='ipam_cidrs')
+    tenant          = db.relationship('TenantItems', back_populates='ipam_cidrs')
+    zone            = db.relationship('ZoneItems', back_populates='ipam_cidrs')
+    environment     = db.relationship('EnvironmentTypes', back_populates='ipam_cidrs')

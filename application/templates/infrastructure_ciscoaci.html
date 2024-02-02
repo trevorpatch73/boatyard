@@ -184,6 +184,22 @@
             {% endfor %}
         </tbody>
     </table>
-    
 </div>
+
+<!-- First, include jQuery -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<!-- Then, include Select2 JS after jQuery -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
+
+
+<!-- Finally, your custom script to initialize Select2 -->
+<script>
+jQuery(document).ready(function($) {
+    $('#pod_id').select2();
+    $('#node_id').select2();
+    $('#node_peer_id').select2();
+});
+</script>
+
 {% endblock %}
