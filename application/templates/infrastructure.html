@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Infrastructure{% endblock %}
+{% block content %}
+<div class="card" style="width: 18rem;">
+  <img src="{{ url_for('static', filename='images/ipam.png') }}" class="card-img-top" alt="...">    
+  <div class="card-body">
+    <h5 class="card-title">IPAM</h5>
+    <p class="card-text">Add/Modify IP Address Management</p>
+    <a href="{{ url_for('views.infrastructure_ipam') }}" class="btn btn-primary">Manage</a>
+  </div>
+</div>
+</br>
+<div class="card" style="width: 18rem;">
+  <img src="{{ url_for('static', filename='images/ciscoACI.png') }}" class="card-img-top" alt="...">    
+  <div class="card-body">
+    <h5 class="card-title">Cisco ACI</h5>
+    <p class="card-text">Add/Modify Cisco Application Centric Infrastructure Fabrics</p>
+    <a href="{{ url_for('views.infrastructure_ciscoaci') }}" class="btn btn-primary">Manage</a>
+  </div>
+</div>
+{% endblock %}

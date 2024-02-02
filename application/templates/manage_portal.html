@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Manage Portal{% endblock %}
+{% block content %}
+<div class="container">
+    <h2>Manage Tenants</h2>
+
+    <!-- Form for adding new tenants -->
+    <form action="{{ url_for('views.manage_portal') }}" method="post">
+        <input type="hidden" name="manage_tenants_form" value="true"> <!-- Hidden input field for form identifier -->
+        <div class="form-group">
+            <label for="tenant_name">Tenant Name:</label>
+            <input type="text" class="form-control" id="tenant_name" name="tenant_name" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Submit</button>
+    </form>
+
+    <!-- Display existing tenant data -->
+    <h3>Tenants</h3>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Tenant Name</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for tenant in tenants %} 
+            <tr>
+                <td>{{ tenant.tenant_name }}</td>  
+                <td>
+                    <!-- Delete button form -->
+                    <form action="{{ url_for('views.delete_tenant', id=tenant.id) }}" method="post">
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                    </form>
+                </td>                
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </br>
+    
+    <h2>Manage Zones</h2>
+
+    <!-- Form for adding new zones -->
+    <form action="{{ url_for('views.manage_portal') }}" method="post">
+        <input type="hidden" name="manage_zones_form" value="true"> <!-- Hidden input field for form identifier -->
+        <div class="form-group">
+            <label for="zone_name">Zone Name:</label>
+            <input type="text" class="form-control" id="zone_name" name="zone_name" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Submit</button>
+    </form>
+
+    <!-- Display existing zones data -->
+    <h3>Zones</h3>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Zone Name</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for zone in zones %}
+            <tr>
+                <td>{{ zone.zone_name }}</td> 
+                <td>
+                    <!-- Delete button form -->
+                    <form action="{{ url_for('views.delete_zone', id=zone.id) }}" method="post">
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                    </form>
+                </td>                
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>    
+</div>
+{% endblock %}    

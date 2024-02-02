@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% block title %}Manage Cisco ACI Infrastructure{% endblock %}
+{% block content %}
+<div class="container">
+    <h2>Manage Cisco ACI Infrastructure</h2>
+
+    <!-- Form for adding new infrastructure -->
+    <form action="{{ url_for('views.infrastructure_ciscoaci') }}" method="post">
+        <input type="hidden" name="infrastructure_form" value="true"> <!-- Hidden input field for form identifier -->
+        <div class="form-group">
+            <label for="fabric_name">Fabric Name:</label>
+            <input type="text" class="form-control" id="fabric_name" name="fabric_name" required>
+        </div>
+        <div class="form-group">
+            <label for="target_apic">Target APIC IP:</label>
+            <input type="text" class="form-control" id="target_apic" name="target_apic" required>
+        </div>
+        <div class="form-group">
+            <label for="service_account_username">Service Account Username:</label>
+            <input type="text" class="form-control" id="service_account_username" name="service_account_username" required>
+        </div>
+        <div class="form-group">
+            <label for="service_account_password">Service Account Password:</label>
+            <input type="password" class="form-control" id="service_account_password" name="service_account_password" required>
+        </div>
+        <div class="form-group">
+            <label for="git_repository">Git Repository:</label>
+            <input type="text" class="form-control" id="git_repository" name="git_repository" required>
+        </div>
+        <div class="form-group">
+            <label for="git_username">Git Username:</label>
+            <input type="text" class="form-control" id="git_username" name="git_username" required>
+        </div>
+        <div class="form-group">
+            <label for="git_email">Git Email:</label>
+            <input type="text" class="form-control" id="git_email" name="git_email" required>
+        </div>           
+        <button type="submit" class="btn btn-primary">Submit</button>
+    </form>
+
+    <!-- Display existing infrastructure data -->
+    <h3>Cisco ACI Fabrics</h3>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Fabric Name</th>
+                <th>Target APIC IP</th>
+                <th>Service Account Username</th>
+                <th>Git Repository</th>
+                <th>Git Username</th>
+                <th>Git Email</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for infrastructure in infrastructures %}
+            <tr>
+                <td hx-get="{{ url_for('views.edit_fabric_name', id=infrastructure.id) }}" hx-trigger="click">
+                    {{ infrastructure.fabric_name }}
+                </td>
+                <td>{{ infrastructure.target_apic }}</td>
+                <td hx-get="{{ url_for('views.edit_service_account_username', id=infrastructure.id) }}" hx-trigger="click">
+                    {{ infrastructure.service_account_username }}
+                </td>
+                <td hx-get="{{ url_for('views.edit_git_repository', id=infrastructure.id) }}" hx-trigger="click">
+                    {{ infrastructure.git_repository }}
+                </td>
+                <td hx-get="{{ url_for('views.edit_git_username', id=infrastructure.id) }}" hx-trigger="click">
+                    {{ infrastructure.git_username }}
+                </td>
+                <td hx-get="{{ url_for('views.edit_git_email', id=infrastructure.id) }}" hx-trigger="click">
+                    {{ infrastructure.git_email }}
+                </td>
+                <td>
+                    <!-- Sync Git button form -->
+                    <form action="{{ url_for('views.sync_aci_infrastructure', id=infrastructure.id) }}" method="post">
+                        <button type="submit" class="btn btn-info">Sync Git</button>
+                    </form>
+                    <!-- Delete button form -->
+                    <form action="{{ url_for('views.delete_aci_infrastructure', id=infrastructure.id) }}" method="post">
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                    </form>
+                </td>                
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <!-- Form for adding new switches -->
+    <h3>Add New Fabric Node</h3>
+    <form action="{{ url_for('views.infrastructure_ciscoaci') }}" method="post">
+        <input type="hidden" name="switch_form"> <!-- Identifier for the switch form -->
+        <div class="form-group">
+            <label for="fabric_name">Fabric Name:</label>
+            <select class="form-control" id="fabric_name" name="fabric_name">
+                {% for name in fabric_names %}
+                <option value="{{ name }}">{{ name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="node_role">Node Role:</label>
+            <select class="form-control" id="node_role" name="node_role">
+                <option value="leaf">Leaf</option>
+                <option value="spine">Spine</option>
+            </select>
+        </div>        
+        <div class="form-group">
+            <label for="pod_id">Pod ID:</label>
+            <select class="form-control" id="pod_id" name="pod_id">
+                {% for i in range(1, 13) %}
+                <option value="{{ i }}">{{ i }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="node_id">Node ID:</label>
+            <select class="form-control" id="node_id" name="node_id">
+                {% for id in available_node_ids %}
+                <option value="{{ id }}">{{ id }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="node_id">Node Peer ID:</label>
+            <select class="form-control" id="node_peer_id" name="node_peer_id">
+                {% for id in available_peer_ids %}
+                <option value="{{ id }}">{{ id }}</option>
+                {% endfor %}
+            </select>
+        </div>        
+        <div class="form-group">
+            <label for="serial_number">Serial Number:</label>
+            <input type="text" class="form-control" id="serial_number" name="serial_number">
+        </div>
+        <div class="form-group">
+            <label for="node_name">Node Name:</label>
+            <input type="text" class="form-control" id="node_name" name="node_name">
+        </div>
+        <button type="submit" class="btn btn-primary">Add Node</button>
+    </form>
+
+    <!-- Table for displaying switch data -->
+    <h3>All Fabric Nodes</h3>
+    <form action="{{ url_for('views.sync_all_switches') }}" method="post">
+        <button type="submit" class="btn btn-info">Sync Git All</button>
+    </form>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Fabric Name</th>
+                <th>Node Role</th>
+                <th>Pod ID</th>
+                <th>Node ID</th>
+                <th>Node Peer ID</th> 
+                <th>Serial Number</th>
+                <th>Node Name</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for switch in switches %}
+            <tr>
+                <td>{{ switch.fabric_name }}</td>
+                <td>{{ switch.node_role }}</td>
+                <td>{{ switch.pod_id }}</td>
+                <td>{{ switch.node_id }}</td>
+                <td>{{ switch.node_peer_id }}</td>
+                <td>{{ switch.serial_number }}</td>
+                <td hx-get="{{ url_for('views.edit_node_name', id=switch.id) }}" hx-trigger="click">
+                    {{ switch.node_name }}
+                </td>
+                <td>
+                    <!-- Settings button form -->
+                    <form action="{{ url_for('views.settings_switch', id=switch.id) }}" method="post">
+                        <button type="submit" class="btn btn-Primary">Settings</button>
+                    </form>                    
+                    <!-- Delete button form -->
+                    <form action="{{ url_for('views.delete_switch', id=switch.id) }}" method="post">
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+</div>
+{% endblock %}
