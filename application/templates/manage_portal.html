@@ -73,6 +73,43 @@
             </tr>
             {% endfor %}
         </tbody>
-    </table>    
+    </table>
+        </br>
+    
+    <h2>Manage Environments</h2>
+
+    <!-- Form for adding new env -->
+    <form action="{{ url_for('views.manage_portal') }}" method="post">
+        <input type="hidden" name="manage_env_form" value="true"> <!-- Hidden input field for form identifier -->
+        <div class="form-group">
+            <label for="zone_name">Environment Name:</label>
+            <input type="text" class="form-control" id="env_name" name="env_name" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Submit</button>
+    </form>
+
+    <!-- Display existing zones data -->
+    <h3>Environments</h3>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Environment Name</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for env in envs %}
+            <tr>
+                <td>{{ env.types }}</td> 
+                <td>
+                    <!-- Delete button form -->
+                    <form action="{{ url_for('views.delete_env', id=env.id) }}" method="post">
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                    </form>
+                </td>                
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>  
 </div>
 {% endblock %}    

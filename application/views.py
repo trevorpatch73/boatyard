@@ -6,7 +6,7 @@ from sqlalchemy import func
 from . import db
 import json
 
-from .models import InfrastructureCiscoAci, CiscoACISwitch, CiscoACISwitchVpcPairs, EnvironmentTypes, LocationItems, TenantItems
+from .models import InfrastructureCiscoAci, CiscoACISwitch, CiscoACISwitchVpcPairs, EnvironmentTypes, LocationItems, TenantItems, ZoneItems
 from .functions import handle_terraform_files, handle_aci_fabric_node_member_data, handle_aci_vpc_explict_protection_group_data
 
 views = Blueprint('views', __name__)
@@ -34,7 +34,39 @@ def manage_tenants():
             return redirect(url_for('views.manage_tenants'))  # Redirect to clear the form/post request
     
     tenants = TenantItems.query.all()
-    return render_template("manage_tenants.html", user=current_user, tenants=tenants)   
+    
+    if request.method == 'POST' and 'manage_zones_form' in request.form:
+        zone_name = request.form.get('zone_name')
+        
+        existing_zone = ZoneItems.query.filter_by(zone_name=zone_name).first()
+        if existing_zone is not None:
+            flash('zone already exists.', category='error')
+        else:
+            new_zone = ZoneItems(zone_name=zone_name)
+            db.session.add(new_zone)
+            db.session.commit()
+            flash('zone added successfully!', category='success')
+            return redirect(url_for('views.manage_zones'))
+    
+    zones = ZoneItems.query.all()
+    
+    if request.method == 'POST' and 'manage_envs_form' in request.form:
+        env_name = request.form.get('env_name')
+        
+        existing_env = EnvironmentTypes.query.filter_by(env_name=env_name).first()
+        if existing_env is not None:
+            flash('env already exists.', category='error')
+        else:
+            new_env = EnvironmentTypes(env_name=env_name)
+            db.session.add(new_env)
+            db.session.commit()
+            flash('env added successfully!', category='success')
+            return redirect(url_for('views.manage_envs'))
+    
+    envs = EnvironmentTypes.query.all() 
+    
+    
+    return render_template("manage_tenants.html", user=current_user, tenants=tenants, zones=zones, envs=envs)   
     
 @views.route('/delete-tenant/<int:id>', methods=['POST'])
 @login_required
@@ -43,11 +75,37 @@ def delete_tenant(id):
     tenant_to_delete = TenantItems.query.get_or_404(id)
 
     # Delete the entry from the database
-    db.session.deletetenant_to_delete)
+    db.session.delete(tenant_to_delete)
     db.session.commit()
 
     flash('Infrastructure entry deleted successfully!', category='success')
-    return redirect(url_for('views.infrastructure_ciscoaci'))    
+    return redirect(url_for('views.manane_portal')) 
+    
+@views.route('/delete-zone/<int:id>', methods=['POST'])
+@login_required
+def delete_zone(id):
+    # Query the database for the infrastructure entry
+    zone_to_delete = ZoneItems.query.get_or_404(id)
+
+    # Delete the entry from the database
+    db.session.delete(zone_to_delete)
+    db.session.commit()
+
+    flash('Infrastructure entry deleted successfully!', category='success')
+    return redirect(url_for('views.manane_portal')) 
+    
+@views.route('/delete-env/<int:id>', methods=['POST'])
+@login_required
+def delete_env(id):
+    # Query the database for the infrastructure entry
+    env_to_delete = EnvironmentTypes.query.get_or_404(id)
+
+    # Delete the entry from the database
+    db.session.delete(env_to_delete)
+    db.session.commit()
+
+    flash('Infrastructure entry deleted successfully!', category='success')
+    return redirect(url_for('views.manane_portal'))        
 
 @views.route('/infrastructure', methods=['GET', 'POST'])
 @login_required
