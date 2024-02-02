@@ -515,3 +515,81 @@ def delete_cidr(id):
     db.session.commit()
     flash('CIDR deleted successfully!', category='success')
     return redirect(url_for('views.infrastructure_ipam'))
+    
+@views.route('/edit-cidr/<int:id>', methods=['GET', 'POST'])
+@login_required
+def edit_cidr(id):
+    items = IPAM_CIDRS.query.get_or_404(id)
+
+    if request.method == 'POST':
+        new_item = request.form.get('network_cidr')
+        items.network_cidr = new_item
+        db.session.commit()
+        return redirect(url_for('views.infrastructure_ipam'))
+
+    return render_template('edit_cidr.html')
+    
+@views.route('/edit-cidr-location/<int:id>', methods=['GET', 'POST'])
+@login_required
+def edit_cidr_location(id):
+    items = IPAM_CIDRS.query.get_or_404(id)
+
+    if request.method == 'POST':
+        new_item = request.form.get('location')
+        items.location_id = new_item
+        db.session.commit()
+        return redirect(url_for('views.infrastructure_ipam'))
+
+    return render_template('edit_cidr_location.html') 
+    
+@views.route('/edit-cidr-tenant/<int:id>', methods=['GET', 'POST'])
+@login_required
+def edit_cidr_tenant(id):
+    items = IPAM_CIDRS.query.get_or_404(id)
+
+    if request.method == 'POST':
+        new_item = request.form.get('tenant')
+        items.tenant_id = new_item
+        db.session.commit()
+        return redirect(url_for('views.infrastructure_ipam'))
+
+    return render_template('edit_cidr_tenant.html') 
+    
+@views.route('/edit-cidr-zone/<int:id>', methods=['GET', 'POST'])
+@login_required
+def edit_cidr_zone(id):
+    items = IPAM_CIDRS.query.get_or_404(id)
+
+    if request.method == 'POST':
+        new_item = request.form.get('zone')
+        items.zone_id = new_item
+        db.session.commit()
+        return redirect(url_for('views.infrastructure_ipam'))
+
+    return render_template('edit_cidr_zone.html')        
+    
+@views.route('/edit-cidr-env/<int:id>', methods=['GET', 'POST'])
+@login_required
+def edit_cidr_env(id):
+    items = IPAM_CIDRS.query.get_or_404(id)
+
+    if request.method == 'POST':
+        new_item = request.form.get('env')
+        items.environment_id = new_item
+        db.session.commit()
+        return redirect(url_for('views.infrastructure_ipam'))
+
+    return render_template('edit_cidr_env.html')  
+    
+@views.route('/edit-cidr-app/<int:id>', methods=['GET', 'POST'])
+@login_required
+def edit_cidr_app(id):
+    items = IPAM_CIDRS.query.get_or_404(id)
+
+    if request.method == 'POST':
+        new_item = request.form.get('app')
+        items.applications = new_item
+        db.session.commit()
+        return redirect(url_for('views.infrastructure_ipam'))
+
+    return render_template('edit_cidr_app.html')      
