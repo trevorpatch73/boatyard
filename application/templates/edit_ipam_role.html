@@ -1,0 +1,9 @@
+<div class="container">
+    <form action="{{ url_for('views.edit_ipam_role', host_id=host.id) }}?cidr_id={{ cidr_id }}" method="post">
+        <div class="form-group">
+            <label for="role">Role:</label>
+            <input type="text" class="form-control" id="role" name="role" value="{{ host.role }}">
+        </div>
+        <button type="submit" class="btn btn-success">Save</button>
+    </form>
+</div>

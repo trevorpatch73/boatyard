@@ -1,0 +1,9 @@
+<div class="container">
+    <form action="{{ url_for('views.edit_ipam_host_name', host_id=host.id) }}?cidr_id={{ cidr_id }}" method="post">
+        <div class="form-group">
+            <label for="host_name">host name:</label>
+            <input type="text" class="form-control" id="host_name" name="host_name" value="{{ host.host_name }}">
+        </div>
+        <button type="submit" class="btn btn-success">Save</button>
+    </form>
+</div>

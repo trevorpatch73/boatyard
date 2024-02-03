@@ -1,0 +1,10 @@
+<form action="{{ url_for('views.edit_ipam_domain_name', host_id=host.id) }}?cidr_id={{ cidr_id }}" method="post">
+    <select name="domain" id="domain" class="form-control">
+        {% for domain in domains %}
+            <option value="{{ domain.id }}" {% if domain.domain_name == host.domain_id %} selected {% endif %}>
+                {{ domain.domain_name }}
+            </option>
+        {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-success">Save</button>
+</form>

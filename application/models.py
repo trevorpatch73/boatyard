@@ -123,7 +123,7 @@ class IPAM_HOSTS(db.Model):
     network_cidr = db.Column(db.Integer, nullable=False)
     network_ip = db.Column(db.String(150), nullable=False)
     host_name = db.Column(db.String(150), nullable=False)
-    domain_id = db.Column(db.Integer, db.ForeignKey('domain_items.id', name='fk_domain_id'))
+    domain_id = db.Column(db.String(150), db.ForeignKey('domain_items.id'), nullable=True)
     application = db.Column(db.String(150))
     role = db.Column(db.String(150))
     location_id = db.Column(db.Integer, db.ForeignKey('location_items.id'), nullable=False)

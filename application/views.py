@@ -2,12 +2,12 @@ from flask import Blueprint, render_template, request, flash, jsonify, redirect,
 from flask_login import login_required, current_user
 from werkzeug.security import generate_password_hash
 from werkzeug.exceptions import NotFound
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from ipaddress import ip_network
 from . import db
 import json
 
-from .models import InfrastructureCiscoAci, CiscoACISwitch, CiscoACISwitchVpcPairs, EnvironmentTypes, LocationItems, TenantItems, ZoneItems, IPAM_CIDRS, IPAM_HOSTS
+from .models import InfrastructureCiscoAci, CiscoACISwitch, CiscoACISwitchVpcPairs, EnvironmentTypes, LocationItems, TenantItems, ZoneItems, IPAM_CIDRS, IPAM_HOSTS, DomainItems
 from .functions import handle_terraform_files, handle_aci_fabric_node_member_data, handle_aci_vpc_explict_protection_group_data
 
 views = Blueprint('views', __name__)
@@ -116,6 +116,7 @@ def infrastructure():
 @views.route('/infrastructure/ciscoaci', methods=['GET', 'POST'])
 @login_required
 def infrastructure_ciscoaci():
+    print("Entered infrastructure_ciscoaci route")
     # Initialize variables
     infrastructures = []
     fabric_names = []
@@ -184,7 +185,9 @@ def infrastructure_ciscoaci():
 
         # Handle switch form submission
         if request.method == 'POST' and 'switch_form' in request.form:
+            print("Handling switch form submission")
             fabric_name = request.form.get('fabric_name')
+            print(f"Fabric Name: {fabric_name}")
             node_role = request.form.get('node_role')
             pod_id = request.form.get('pod_id', type=int)
             node_id = request.form.get('node_id', type=int)
@@ -199,7 +202,9 @@ def infrastructure_ciscoaci():
             existing_switch = CiscoACISwitch.query.filter_by(fabric_name=fabric_name, node_id=node_id).first()
             if existing_switch:
                 flash('This node ID is already assigned for the selected fabric.', category='error')
+                print("Existing switch found, not adding a new one.")
             else:
+                print("Adding a new switch...")
                 new_switch = CiscoACISwitch(
                     fabric_name=fabric_name,
                     node_role=node_role,
@@ -241,6 +246,50 @@ def infrastructure_ciscoaci():
                             flash(f'Error adding switch pair: {e}', category='error')
                     else:
                         flash('Exceeded maximum group ID value.', category='error')
+                
+                if new_switch:
+                    print("New switch added, now looking for an IP...")
+                    # Query the required network prefixes from IPAM_CIDR
+                    cidr_records = IPAM_CIDRS.query.filter_by(
+                        location_id=fabric_name,
+                        tenant_id="global",
+                        zone_id="OOB",
+                        environment_id="PRD"
+                    ).all()
+                    print(f"Found {len(cidr_records)} CIDR records for assignment.")
+                
+                    # Loop through each CIDR record to find available IPs
+                    for cidr in cidr_records:
+                        # Find all hosts in IPAM_HOSTS for the network prefix
+                        all_hosts = IPAM_HOSTS.query.filter(IPAM_HOSTS.network_prefix == cidr.network_prefix).first()
+                        print(f"Fetched {len(all_hosts)} hosts for network prefix {cidr.network_prefix}")
+                
+                        # Find the first host with an unpopulated host_name
+                        for host in all_hosts:
+                            if not host.host_name:  # This checks for both None and empty string ''
+                                print(f"Assigning IP {host.network_ip} to switch {node_name}")
+                                # Update the IPAM_HOSTS record with the new details
+                                host.host_name = node_name
+                                host.domain_id = ".internal.das"
+                                host.role = "SWITCH"
+                
+                                # Commit the changes to the database
+                                try:
+                                    db.session.commit()
+                                    print(f"Assigned IP {host.network_ip} to switch {node_name}")
+                                    flash(f'Assigned IP {host.network_ip} to switch {node_name}', category='success')
+                                    break  # Exit the loop after assigning the first available IP
+                                except Exception as e:
+                                    db.session.rollback()
+                                    print(f"Failed to assign IP to switch {node_name}: {e}")
+                                    flash(f'Failed to assign IP: {e}', category='error')
+                                break  # Break the loop to avoid checking more hosts if an IP was assigned
+                        else:
+                            # If the inner loop did not break, it means no available IP was found
+                            flash('No available IP addresses found for the switch.', category='error')
+                            print("No available IP addresses found for the switch.")
+                            break  # Break the outer loop as well
+
                 
             # Fetch git repository details
             find_fabric_git = InfrastructureCiscoAci.query.filter_by(fabric_name=fabric_name).first()
@@ -430,10 +479,30 @@ def edit_git_email(id):
 @login_required
 def delete_switch(id):
     switch_to_delete = CiscoACISwitch.query.get_or_404(id)
+
+    # Check if the switch is part of a VPC pair and handle it
+    vpc_pair = CiscoACISwitchVpcPairs.query.filter(
+        (CiscoACISwitchVpcPairs.odd_node_id == switch_to_delete.node_id) | 
+        (CiscoACISwitchVpcPairs.even_node_id == switch_to_delete.node_id)
+    ).first()
+    
+    if vpc_pair:
+        # Depending on your requirement, you can delete the VPC pair or handle it differently
+        db.session.delete(vpc_pair)
+    
+    # Now delete the switch
     db.session.delete(switch_to_delete)
-    db.session.commit()
-    flash('Switch deleted successfully!', category='success')
+    
+    # Commit all changes to the database
+    try:
+        db.session.commit()
+        flash('Switch and associated VPC pair deleted successfully!', category='success')
+    except Exception as e:
+        db.session.rollback()
+        flash('An error occurred while deleting the switch.', category='error')
+
     return redirect(url_for('views.infrastructure_ciscoaci'))
+
 
 @views.route('/settings-switch/<int:id>', methods=['POST'])
 @login_required
@@ -488,7 +557,7 @@ def infrastructure_ipam():
                                    environment_id=environment_id,
                                    application=application)
         db.session.add(new_ipam_cidr)
-        db.session.flush()  # This will assign an ID to new_ipam_cidr without committing the transaction
+        db.session.flush()
 
         # Calculate usable hosts
         usable_hosts = list(new_network.hosts())
@@ -629,5 +698,83 @@ def edit_cidr_app(id):
     
 @views.route('/infrastructure/ipam/<int:id>', methods=['GET', 'POST'])
 @login_required
-def infrastructure_ipam_hosts():    
-    return render_template('infrastructure_ipam.html')
+def infrastructure_ipam_hosts(id):
+    
+    cidr_id=id
+    
+    # Query the IPAM_CIDR by ID
+    cidr = IPAM_CIDRS.query.get_or_404(id)
+    network_prefix = cidr.network_prefix
+    
+    # Query IPAM_HOSTS by the network_prefix of the found CIDR
+    hosts = IPAM_HOSTS.query.filter_by(network_prefix=network_prefix).all()
+    
+    # Render the template with the hosts data
+    return render_template('infrastructure_ipam_hosts.html', cidr_id=cidr_id, hosts=hosts, network_prefix=network_prefix)
+
+@views.route('/edit-ipam-host-name/<int:host_id>', methods=['GET', 'POST'])
+@login_required
+def edit_ipam_host_name(host_id):
+    cidr_id = request.args.get('cidr_id', type=int)
+    host = IPAM_HOSTS.query.get_or_404(host_id)
+    
+    if request.method == 'POST':
+        host.host_name = request.form['host_name']
+        db.session.commit()
+        flash('Host name updated successfully!', 'success')
+        return redirect(request.referrer)
+
+    return render_template('edit_ipam_host_name.html', host=host)
+
+@views.route('/edit-ipam-domain-name/<int:host_id>', methods=['GET', 'POST'])
+@login_required
+def edit_ipam_domain_name(host_id):
+    cidr_id = request.args.get('cidr_id', default="") 
+    host = IPAM_HOSTS.query.get_or_404(host_id)
+    domains = DomainItems.query.all()
+
+    if request.method == 'POST':
+        # Get the domain ID from the form
+        domain_id = request.form['domain']
+        # Query the DomainItems table to get the corresponding domain_name
+        domain_item = DomainItems.query.get(domain_id)
+        if domain_item:
+            # Assign the domain_name string to the domain_id field of IPAM_HOSTS
+            host.domain_id = domain_item.domain_name
+            db.session.commit()
+            flash('Domain updated successfully!', 'success')
+        else:
+            flash('Domain not found!', 'error')
+
+        return redirect(request.referrer)
+
+    return render_template('edit_ipam_domain_name.html', host=host, domains=domains, cidr_id=cidr_id)
+
+@views.route('/edit-ipam-application/<int:host_id>', methods=['GET', 'POST'])
+@login_required
+def edit_ipam_application(host_id):
+    cidr_id = request.args.get('cidr_id', type=int)
+    host = IPAM_HOSTS.query.get_or_404(host_id)
+    
+    if request.method == 'POST':
+        host.application = request.form['app']
+        db.session.commit()
+        flash('Application updated successfully!', 'success')
+        return redirect(request.referrer)
+
+    return render_template('edit_ipam_application.html', host=host, cidr_id=cidr_id)
+
+
+@views.route('/edit-ipam-role/<int:host_id>', methods=['GET', 'POST'])
+@login_required
+def edit_ipam_role(host_id):
+    cidr_id = request.args.get('cidr_id', type=int)
+    host = IPAM_HOSTS.query.get_or_404(host_id)
+    
+    if request.method == 'POST':
+        host.role = request.form['role']
+        db.session.commit()
+        flash('Role updated successfully!', 'success')
+        return redirect(request.referrer)
+
+    return render_template('edit_ipam_role.html', host=host, cidr_id=cidr_id)
