@@ -74,12 +74,12 @@
                 <td hx-get="{{ url_for('views.edit_cidr', id=cidr.id) }}" hx-trigger="click">{{ cidr.network_cidr }}</td>
                 <td hx-get="{{ url_for('views.edit_cidr_location', id=cidr.id) }}" hx-trigger="click">{{ cidr.location.items }}</td>
                 <td hx-get="{{ url_for('views.edit_cidr_tenant', id=cidr.id) }}" hx-trigger="click">{{ cidr.tenant.tenant_name }}</td>
-                <td>{{ cidr.zone.zone_name }}</td>
-                <td>{{ cidr.environment.types }}</td>
-                <td>{{ cidr.application }}</td>
+                <td hx-get="{{ url_for('views.edit_cidr_zone', id=cidr.id) }}" hx-trigger="click">{{ cidr.zone.zone_name }}</td>
+                <td hx-get="{{ url_for('views.edit_cidr_env', id=cidr.id) }}" hx-trigger="click">{{ cidr.environment.types }}</td>
+                <td hx-get="{{ url_for('views.edit_cidr_app', id=cidr.id) }}" hx-trigger="click">{{ cidr.application }}</td>
                 <td>
                     <!-- Open button form -->
-                    <form action="{{ url_for('views.open_cidr', id=cidr.id) }}" method="post">
+                    <form action="{{ url_for('views.infrastructure_ipam_hosts', id=cidr.id) }}" method="post">
                         <button type="submit" class="btn btn-Primary">Open</button>
                     </form>                    
                     <!-- Delete button form -->

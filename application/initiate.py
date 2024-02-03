@@ -1,5 +1,5 @@
 from . import db
-from .models import EnvironmentTypes, LocationItems, TenantItems, ZoneItems
+from .models import EnvironmentTypes, LocationItems, TenantItems, ZoneItems, DomainItems
 
 def EnvironmentTypesTableInitiate():
     # Define the list of environment types
@@ -98,4 +98,26 @@ def ZoneItemsTableInitiate():
             db.session.add(new_item)
 
     # Commit the session to save the changes to the database
-    db.session.commit()        
+    db.session.commit()
+    
+def DomainItemsTableInitiate():
+    # Define the list of items
+    domain_items = [
+        ".internal.das"
+    ]    
+    
+    # Iterate over the list of items
+    for item_name in domain_items:
+        
+        # Check if the item already exists to avoid duplicates
+        existing_item = DomainItems.query.filter_by(domain_name=item_name).first()
+        
+        if not existing_item:
+            # Create a new Domain instance for each item
+            new_item = DomainItems(domain_name=item_name)
+            
+            # Add the new item to the session
+            db.session.add(new_item)
+
+    # Commit the session to save the changes to the database
+    db.session.commit()      

@@ -62,6 +62,7 @@ class EnvironmentTypes(db.Model):
     
     #Relationships
     ipam_cidrs      = db.relationship('IPAM_CIDRS', back_populates='environment')
+    ipam_hosts      = db.relationship('IPAM_HOSTS', back_populates='environment')
     
 class LocationItems(db.Model):
     __tablename__   = 'location_items'
@@ -70,6 +71,7 @@ class LocationItems(db.Model):
     
     #Relationships
     ipam_cidrs      = db.relationship('IPAM_CIDRS', back_populates='location')
+    ipam_hosts      = db.relationship('IPAM_HOSTS', back_populates='location')
     
 class TenantItems(db.Model):
     __tablename__   = 'tenant_items'
@@ -78,6 +80,7 @@ class TenantItems(db.Model):
     
     #Relationships
     ipam_cidrs      = db.relationship('IPAM_CIDRS', back_populates='tenant')
+    ipam_hosts      = db.relationship('IPAM_HOSTS', back_populates='tenant')
     
 class ZoneItems(db.Model):
     __tablename__   = 'zone_items'
@@ -86,8 +89,10 @@ class ZoneItems(db.Model):
     
     #Relationships
     ipam_cidrs      = db.relationship('IPAM_CIDRS', back_populates='zone')
+    ipam_hosts      = db.relationship('IPAM_HOSTS', back_populates='zone')
     
 class IPAM_CIDRS(db.Model):
+    __tablename__   = 'ipam_cidrs'
     id              = db.Column(db.Integer, primary_key=True)
     network_prefix  = db.Column(db.String(150), nullable=False)
     network_cidr    = db.Column(db.Integer, nullable=False)
@@ -102,3 +107,34 @@ class IPAM_CIDRS(db.Model):
     tenant          = db.relationship('TenantItems', back_populates='ipam_cidrs')
     zone            = db.relationship('ZoneItems', back_populates='ipam_cidrs')
     environment     = db.relationship('EnvironmentTypes', back_populates='ipam_cidrs')
+
+class DomainItems(db.Model):
+    __tablename__   = 'domain_items'
+    id              = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    domain_name       = db.Column(db.String(150), unique=True)
+    
+    #Relationships
+    ipam_hosts      = db.relationship('IPAM_HOSTS', back_populates='domain')
+    
+class IPAM_HOSTS(db.Model):
+    __tablename__ = 'ipam_hosts'
+    id = db.Column(db.Integer, primary_key=True)
+    network_prefix = db.Column(db.String(150), nullable=False)
+    network_cidr = db.Column(db.Integer, nullable=False)
+    network_ip = db.Column(db.String(150), nullable=False)
+    host_name = db.Column(db.String(150), nullable=False)
+    domain_id = db.Column(db.Integer, db.ForeignKey('domain_items.id', name='fk_domain_id'))
+    application = db.Column(db.String(150))
+    role = db.Column(db.String(150))
+    location_id = db.Column(db.Integer, db.ForeignKey('location_items.id'), nullable=False)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenant_items.id'), nullable=False)
+    zone_id = db.Column(db.Integer, db.ForeignKey('zone_items.id'), nullable=False)
+    environment_id = db.Column(db.Integer, db.ForeignKey('environment_types.id'), nullable=False)
+
+    # Relationships
+    location = db.relationship('LocationItems', back_populates='ipam_hosts')
+    tenant = db.relationship('TenantItems', back_populates='ipam_hosts')
+    zone = db.relationship('ZoneItems', back_populates='ipam_hosts')
+    environment = db.relationship('EnvironmentTypes', back_populates='ipam_hosts')
+    domain = db.relationship('DomainItems', back_populates='ipam_hosts')
+   

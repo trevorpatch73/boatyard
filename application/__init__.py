@@ -16,11 +16,12 @@ def create_database(app):
         print('Database Exists!')
         
 def initiate_functions(app):
-    from .initiate import EnvironmentTypesTableInitiate, LocationItemsTableInitiate, TenantItemsTableInitiate, ZoneItemsTableInitiate
+    from .initiate import EnvironmentTypesTableInitiate, LocationItemsTableInitiate, TenantItemsTableInitiate, ZoneItemsTableInitiate, DomainItemsTableInitiate
     EnvironmentTypesTableInitiate()
     LocationItemsTableInitiate()
     TenantItemsTableInitiate()
     ZoneItemsTableInitiate()
+    DomainItemsTableInitiate()
 
 def create_app():
     app = Flask(__name__)

@@ -7,7 +7,7 @@ from ipaddress import ip_network
 from . import db
 import json
 
-from .models import InfrastructureCiscoAci, CiscoACISwitch, CiscoACISwitchVpcPairs, EnvironmentTypes, LocationItems, TenantItems, ZoneItems, IPAM_CIDRS
+from .models import InfrastructureCiscoAci, CiscoACISwitch, CiscoACISwitchVpcPairs, EnvironmentTypes, LocationItems, TenantItems, ZoneItems, IPAM_CIDRS, IPAM_HOSTS
 from .functions import handle_terraform_files, handle_aci_fabric_node_member_data, handle_aci_vpc_explict_protection_group_data
 
 views = Blueprint('views', __name__)
@@ -467,25 +467,19 @@ def infrastructure_ipam():
         environment_id = request.form.get('environment')
         application = request.form.get('application')  # Optional
 
-        # Convert input to ip_network for comparison
         try:
-            new_network = ip_network(full_network)
+            new_network = ip_network(full_network, strict=False)
         except ValueError:
             flash('Invalid network prefix/CIDR.', 'error')
             return redirect(url_for('views.infrastructure_ipam'))
 
-        # Check for duplicate or overlapping networks
         existing_cidrs = IPAM_CIDRS.query.all()
         for cidr in existing_cidrs:
-            existing_network = ip_network(f"{cidr.network_prefix}/{cidr.network_cidr}")
-            if new_network == existing_network:
-                flash('This network CIDR already exists.', 'error')
-                return redirect(url_for('views.infrastructure_ipam'))
-            if new_network.overlaps(existing_network):
-                flash('This network CIDR overlaps with an existing network.', 'error')
+            existing_network = ip_network(f"{cidr.network_prefix}/{cidr.network_cidr}", strict=False)
+            if new_network == existing_network or new_network.overlaps(existing_network):
+                flash('This network CIDR already exists or overlaps with an existing network.', 'error')
                 return redirect(url_for('views.infrastructure_ipam'))
 
-        # Proceed with adding the new IPAM CIDR
         new_ipam_cidr = IPAM_CIDRS(network_prefix=network_prefix,
                                    network_cidr=int(network_cidr),
                                    location_id=location_id,
@@ -494,15 +488,36 @@ def infrastructure_ipam():
                                    environment_id=environment_id,
                                    application=application)
         db.session.add(new_ipam_cidr)
+        db.session.flush()  # This will assign an ID to new_ipam_cidr without committing the transaction
+
+        # Calculate usable hosts
+        usable_hosts = list(new_network.hosts())
+        
+        # Iterate over usable hosts and add them to IPAM_HOSTS
+        for host_ip in usable_hosts:
+            new_ipam_host = IPAM_HOSTS(
+                network_prefix=network_prefix,
+                network_cidr=new_network.prefixlen,
+                network_ip=str(host_ip),
+                host_name='',  
+                domain_id='',  
+                application=application,
+                role='',  
+                location_id=location_id,
+                tenant_id=tenant_id,
+                zone_id=zone_id,
+                environment_id=environment_id
+            )
+            db.session.add(new_ipam_host)
+        
         db.session.commit()
-        flash('IPAM CIDR added successfully!', 'success')
+        flash('IPAM CIDR and HOSTS added successfully!', 'success')
         return redirect(url_for('views.infrastructure_ipam'))
 
     locations = LocationItems.query.all()
     tenants = TenantItems.query.all()
     zones = ZoneItems.query.all()
     environments = EnvironmentTypes.query.all()
-    
     ipam_cidrs = IPAM_CIDRS.query.all()
     
     return render_template('infrastructure_ipam.html', ipam_cidrs=ipam_cidrs, locations=locations, tenants=tenants, zones=zones, environments=environments)
@@ -519,77 +534,100 @@ def delete_cidr(id):
 @views.route('/edit-cidr/<int:id>', methods=['GET', 'POST'])
 @login_required
 def edit_cidr(id):
-    items = IPAM_CIDRS.query.get_or_404(id)
+    cidr = IPAM_CIDRS.query.get_or_404(id)
 
     if request.method == 'POST':
-        new_item = request.form.get('network_cidr')
-        items.network_cidr = new_item
+        cidr.network_cidr = request.form['network_cidr']
         db.session.commit()
+        flash('CIDR updated successfully!', 'success')
         return redirect(url_for('views.infrastructure_ipam'))
+        
+    return render_template('edit_cidr.html', cidr=cidr)
 
-    return render_template('edit_cidr.html')
     
 @views.route('/edit-cidr-location/<int:id>', methods=['GET', 'POST'])
 @login_required
 def edit_cidr_location(id):
-    items = IPAM_CIDRS.query.get_or_404(id)
+    cidr = IPAM_CIDRS.query.get_or_404(id) 
+
+    locations = LocationItems.query.all()  
 
     if request.method == 'POST':
-        new_item = request.form.get('location')
-        items.location_id = new_item
+        new_location_id = request.form.get('location')  
+        cidr.location_id = new_location_id  
         db.session.commit()
+        flash('CIDR location updated successfully!', 'success')  
         return redirect(url_for('views.infrastructure_ipam'))
 
-    return render_template('edit_cidr_location.html') 
+    return render_template('edit_cidr_location.html', cidr=cidr, locations=locations)
+
     
 @views.route('/edit-cidr-tenant/<int:id>', methods=['GET', 'POST'])
 @login_required
 def edit_cidr_tenant(id):
-    items = IPAM_CIDRS.query.get_or_404(id)
+    cidr = IPAM_CIDRS.query.get_or_404(id)  
+
+    tenants = TenantItems.query.all() 
 
     if request.method == 'POST':
-        new_item = request.form.get('tenant')
-        items.tenant_id = new_item
+        new_tenant_id = request.form.get('tenant')  
+        cidr.tenant_id = new_tenant_id  
         db.session.commit()
+        flash('CIDR tenant updated successfully!', 'success') 
         return redirect(url_for('views.infrastructure_ipam'))
 
-    return render_template('edit_cidr_tenant.html') 
+    return render_template('edit_cidr_tenant.html', cidr=cidr, tenants=tenants)
+
     
 @views.route('/edit-cidr-zone/<int:id>', methods=['GET', 'POST'])
 @login_required
 def edit_cidr_zone(id):
-    items = IPAM_CIDRS.query.get_or_404(id)
+    cidr = IPAM_CIDRS.query.get_or_404(id)
+
+    zones = ZoneItems.query.all()
 
     if request.method == 'POST':
-        new_item = request.form.get('zone')
-        items.zone_id = new_item
+        new_zone_id = request.form.get('zone')
+        cidr.zone_id = new_zone_id
         db.session.commit()
+        flash('CIDR zone updated successfully!', 'success')
         return redirect(url_for('views.infrastructure_ipam'))
 
-    return render_template('edit_cidr_zone.html')        
+    return render_template('edit_cidr_zone.html', cidr=cidr, zones=zones)
+       
     
 @views.route('/edit-cidr-env/<int:id>', methods=['GET', 'POST'])
 @login_required
 def edit_cidr_env(id):
-    items = IPAM_CIDRS.query.get_or_404(id)
+    cidr = IPAM_CIDRS.query.get_or_404(id)  
+
+    environments = EnvironmentTypes.query.all()  
 
     if request.method == 'POST':
-        new_item = request.form.get('env')
-        items.environment_id = new_item
+        new_environment_id = request.form.get('env')  
+        cidr.environment_id = new_environment_id 
         db.session.commit()
+        flash('CIDR environment updated successfully!', 'success')  
         return redirect(url_for('views.infrastructure_ipam'))
 
-    return render_template('edit_cidr_env.html')  
-    
+    return render_template('edit_cidr_env.html', cidr=cidr, environments=environments)
+
 @views.route('/edit-cidr-app/<int:id>', methods=['GET', 'POST'])
 @login_required
 def edit_cidr_app(id):
-    items = IPAM_CIDRS.query.get_or_404(id)
+    cidr = IPAM_CIDRS.query.get_or_404(id)
 
     if request.method == 'POST':
-        new_item = request.form.get('app')
-        items.applications = new_item
-        db.session.commit()
-        return redirect(url_for('views.infrastructure_ipam'))
+        new_application = request.form.get('app')  
+        cidr.application = new_application  
+        db.session.commit()  
+        flash('CIDR application updated successfully!', 'success') 
+        return redirect(url_for('views.infrastructure_ipam')) 
 
-    return render_template('edit_cidr_app.html')      
+    return render_template('edit_cidr_app.html', cidr=cidr)
+  
+    
+@views.route('/infrastructure/ipam/<int:id>', methods=['GET', 'POST'])
+@login_required
+def infrastructure_ipam_hosts():    
+    return render_template('infrastructure_ipam.html')

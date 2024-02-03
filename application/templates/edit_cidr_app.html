@@ -1,4 +1,9 @@
-<form method="post">
-    <input type="text" name="app" value="{{ cidr.application }}">
-    <button type="submit"  class="btn btn-success" >Save</button>
-</form>
+<div class="container">
+    <form action="{{ url_for('views.edit_cidr_app', id=cidr.id) }}" method="post">
+        <div class="form-group">
+            <label for="app">Application (Optional):</label>
+            <input type="text" class="form-control" id="app" name="app" value="{{ cidr.application }}">
+        </div>
+        <button type="submit" class="btn btn-success">Save</button>
+    </form>
+</div>

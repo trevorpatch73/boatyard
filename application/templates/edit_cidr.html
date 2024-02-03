@@ -1,4 +1,4 @@
-<form method="post">
+<form action="{{ url_for('views.edit_cidr', id=cidr.id) }}" method="post">
     <input type="text" name="network_cidr" value="{{ cidr.network_cidr }}">
-    <button type="submit"  class="btn btn-success" >Save</button>
+    <button type="submit" class="btn btn-success">Save</button>
 </form>

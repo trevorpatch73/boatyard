@@ -1,4 +1,11 @@
-<form method="post">
-    <input type="text" name="env" value="{{ cidr.environment.types }}">
-    <button type="submit"  class="btn btn-success" >Save</button>
+<form action="{{ url_for('views.edit_cidr_env', id=cidr.id) }}" method="post">
+    <label for="env">Environment:</label>
+    <select name="env" id="env" class="form-control">
+        {% for environment in environments %}
+            <option value="{{ environment.id }}" {% if environment.id == cidr.environment_id %}selected{% endif %}>
+                {{ environment.types }}
+            </option>
+        {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-success">Save</button>
 </form>
